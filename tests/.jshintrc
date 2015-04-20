@@ -1,0 +1,40 @@
+{
+  "bitwise": true,
+  "eqeqeq": true,
+  "forin": true,
+  "freeze": true,
+  "immed": true,
+  "indent": 2,
+  "latedef": "nofunc",
+  "newcap": true,
+  "noarg": true,
+  "noempty": true,
+  "nonbsp": true,
+  "nonew": true,
+  "quotmark": "single",
+  "undef": true,
+  "unused": true,
+  "strict": true,
+  "maxparams": 5,
+  "maxdepth": 4,
+  "maxstatements": 15,
+  "maxcomplexity": 10,
+  "maxlen": 120,
+
+  "eqnull": true,
+  "expr": true,
+  "laxbreak": true,
+  "laxcomma": true,
+  "validthis": true,
+
+  "node": true,
+  "mocha": true,
+
+  "globals": {
+    "describe": true,
+    "before": true,
+    "it": true,
+    "assert": true,
+    "should": true
+  }
+}
