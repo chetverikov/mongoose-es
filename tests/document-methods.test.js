@@ -14,7 +14,7 @@ describe('Document methods', function() {
 
   var model;
 
-  before(function(done) {
+  before(function() {
     var schema = require('./support/schema');
 
     schema.plugin(plugin, {
@@ -23,55 +23,60 @@ describe('Document methods', function() {
 
     model = conn.model(support.random() + '_DocumentMethods', schema);
 
-    done();
+    return model.es.createIndex();
   });
 
-  after(function(done) {
-    support.removeCreatedIndexByModel(model, done);
-    conn.close();
+  after(function() {
+    return support
+      .removeCreatedIndexByModel(model)
+      .then(function() {
+        conn.close();
+      });
   });
 
-  it('document.index', function(done) {
-    model.create({
-      name: 'Foo',
-      phones: ['89000980909', '1234322344']
-    }, function(err, document) {
-      document.index();
-      document.on('es-index', function(err, res) {
-        should.ifError(err);
+  it('document.index', function() {
+    return model
+      .create({
+        name: 'Foo',
+        phones: ['89000980909', '1234322344']
+      })
+      .then(function(document) {
+        return Promise.all([document, document.index()]);
+      })
+      .then(function(data) {
+        var res = data[1]
+          , document = data[0];
 
         should.ok(res.created);
         res._id.should.be.equal(document._id.toString());
-
-        done();
       });
-    });
   });
 
-  it('document.unindex', function(done) {
-    model.create({
+  it('document.unindex', function() {
+    return model.create({
       name: 'Foo',
       phones: ['89000980909', '1234322344']
-    }, function(err, document) {
-      document.index();
-      document.on('es-index', function(err) {
-        should.ifError(err);
+    }).then(function(document) {
+      var defer = Promise.defer();
 
-        model.es.refresh(function(err) {
-          should.ifError(err);
-
-          document.unIndex();
-          document.on('es-unIndex', function(err, res) {
-            should.ifError(err);
-
+      document.on('es-index', function() {
+        model.es.refresh().then(function() {
+          document.on('es-unIndex', function(res) {
             should.ok(res.found);
+
             res._index.should.be.equal(model.collection.name);
             res._type.should.be.equal(model.modelName);
 
-            done();
+            defer.resolve();
           });
+          document.unIndex();
+        }, function(err) {
+          defer.reject(err);
         });
       });
+      document.index();
+
+      return defer.promise;
     });
   });
 });

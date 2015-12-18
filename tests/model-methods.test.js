@@ -7,53 +7,60 @@
 var support = require('./support')
   , plugin = require('./../lib')
   , conn = support.mongoose_connect()
-  , async = require('async')
-  , should = require('should');
+  , _ = require('lodash');
+
+require('should');
 
 describe('Model methods', function() {
 
   var model;
 
-  before(function(done) {
+  before(function() {
     var schema = require('./support/schema');
 
     schema.plugin(plugin);
 
-    model = conn.model(support.random() + '_ModelMethods', schema);
+    model = conn.model(support.random() + '_DocumentMethods', schema);
 
-    done();
+    return model.es.createIndex();
   });
 
-  after(function(done) {
-    support.removeCreatedIndexByModel(model, done);
-    conn.close();
+  after(function() {
+    return support
+      .removeCreatedIndexByModel(model)
+      .then(function() {
+        conn.close();
+      });
   });
 
   describe('model.refresh', function() {
-    before(function(done) {
-      async.times(30, function(n, next) {
-        model.create({
-          name: 'Foo ' + n
-        }, function(err, doc) {
-          should.ifError(err);
-          doc.on('es-index', next);
-        });
-      }, done);
-    });
+    before(function() {
+      var docs = [];
+      _.times(30, function(n) {
+        docs.push(
+          model
+            .create({name: 'Foo ' + n})
+            .then(function(doc) {
+              var def = Promise.defer();
 
-    it('refresh exec', function(done) {
-      model.es.refresh(function(err) {
-        should.ifError(err);
+              doc.on('es-index', def.resolve.bind(def));
 
-        done();
+              return def.promise;
+            })
+        );
       });
+
+      return Promise
+        .all(docs);
     });
 
-    it('check count indexed documents', function(done) {
-      model.es.count(function(err, res) {
-        should.ifError(err);
+    it('refresh exec', function() {
+      return model.es.refresh();
+    });
+
+    it('check count indexed documents', function() {
+      return model.es.count().then(function(res) {
         res.count.should.be.equal(30);
-        done();
       });
     });
   });

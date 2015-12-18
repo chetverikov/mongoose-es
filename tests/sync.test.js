@@ -7,54 +7,67 @@
 var support = require('./support')
   , plugin = require('./../lib')
   , conn = support.mongoose_connect()
-  , async = require('async')
-  , should = require('should');
+  , _ = require('lodash');
+
+require('should');
 
 describe('Sync', function() {
+  var model
+    , count = 3000;
 
-  var model;
+  this.timeout(10000);
 
-  before(function(done) {
+  before(function() {
     var schema = require('./support/schema');
 
     schema.plugin(plugin, {
-      middleware: false
+      meddleware: false
     });
 
-    model = conn.model(support.random() + '_ModelSync', schema);
+    model = conn.model(support.random() + '_DocumentMethods', schema);
 
-    done();
+    return model.es.createIndex();
   });
 
-  before(function(done) {
-    async.times(3000, function(n, next) {
-      model.create({
-        name: 'Foo ' + n
-      }, function(err) {
-        should.ifError(err);
-        next();
+  before(function() {
+    var docs = [];
+
+    _.times(count, function(n) {
+      docs.push(
+        model.create({name: 'Foo ' + n})
+      );
+    });
+
+    return Promise
+      .all(docs)
+      .then(function() {
+        return model.count();
+      })
+      .then(function(count) {
+        if (!count || count !== count)
+          throw new Error('Docs not create');
       });
-    }, done);
   });
 
-  after(function(done) {
-    support.removeCreatedIndexByModel(model, done);
-    conn.close();
+  after(function() {
+    return support
+      .removeCreatedIndexByModel(model)
+      .then(function() {
+        conn.close();
+      });
   });
 
-  it('synchronization', function(done) {
-    model.es.sync(function(err) {
-      should.ifError(err);
-
-      setTimeout(function() {
-        model.es.count(function(err, res, status) {
-          should.ifError(err);
-
-          res.count.should.be.equal(3000);
-
-          done();
-        });
-      }, 1000);
-    });
+  it('synchronization', function() {
+    return model.es
+      .sync()
+      .then(function() {
+        return model.es.refresh();
+      })
+      .then(function() {
+        return model.es.count();
+      })
+      .then(function(res) {
+        res.count.should.be.equal(count);
+      });
   });
 });

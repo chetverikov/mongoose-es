@@ -7,14 +7,14 @@
 var support = require('./support')
   , plugin = require('./../lib')
   , conn = support.mongoose_connect()
-  , async = require('async')
+  , _ = require('lodash')
   , should = require('should');
 
 describe('Mapping', function() {
 
   var model;
 
-  before(function(done) {
+  before(function() {
     var schema = require('./support/schema');
 
     schema.plugin(plugin, {
@@ -22,7 +22,7 @@ describe('Mapping', function() {
         properties: {
           name: {
             type: 'string',
-            index_analyzer: 'app_analyzer',
+            analyzer: 'app_analyzer',
             search_analyzer: 'app_search_analyzer'
           }
         }
@@ -30,7 +30,7 @@ describe('Mapping', function() {
       settings: {
         index: {
           analysis: {
-            analyzer:{
+            analyzer: {
               app_analyzer: {
                 type: 'custom',
                 tokenizer: 'nGram',
@@ -50,20 +50,20 @@ describe('Mapping', function() {
               }
             },
             filter: {
-              snowball:{
-                type:     'snowball',
+              snowball: {
+                type: 'snowball',
                 language: 'English'
               },
-              app_ngram:{
+              app_ngram: {
                 type: 'nGram',
                 min_gram: 2,
                 max_gram: 20
               },
-              worddelimiter:{
+              worddelimiter: {
                 type: 'word_delimiter'
               },
               stopwords: {
-                type:      'stop',
+                type: 'stop',
                 stopwords: ['_english_'],
                 ignore_case: true
               }
@@ -75,59 +75,61 @@ describe('Mapping', function() {
 
     model = conn.model(support.random() + '_ModelSync', schema);
 
-    done();
+    return model.es.createIndex();
   });
 
-  after(function(done) {
-    done();//support.removeCreatedIndexByModel(model, done);
-    conn.close();
-  });
-
-  it('create index', function(done) {
-    model.es.createIndex(function(err, res, status) {
-      should.ifError(err);
-      status.should.be.equal(200);
-      done();
-    });
-  });
-
-  it('created docs', function(done) {
-    var names = [
-      'Jacob Andrews', 'Joshua Larkins', 'Tyler Livingston', 'Brandon Macduff', 'Robert Mackenzie',
-      'Morgan Gill', 'Rachel White', 'Brooke Timmons', 'Kylie Fraser', 'Stephanie Ralphs'
-    ];
-
-    async.times(10, function(n, next) {
-      model.create({
-        name: names[n]
-      }, function(err) {
-        should.ifError(err);
-        next();
+  after(function() {
+    return support
+      .removeCreatedIndexByModel(model)
+      .then(function() {
+        conn.close();
       });
-    }, function(err) {
-      should.ifError(err);
-      model.es.refresh(done);
-    });
   });
 
-  it.skip('search', function(done) {
-    model.es.client.search({
-      index: model.es.options.index,
-      type: model.es.options.type,
-      body: {
-        query: {
-          bool: {
-            must: [{query_string: {default_field: 'name', query: 'ra'}}]
+  it('created docs', function() {
+    this.timeout(500);
+    var names = [
+        'Jacob Andrews', 'Joshua Larkins', 'Tyler Livingston', 'Brandon Macduff', 'Robert Mackenzie',
+        'Morgan Gill', 'Rachel White', 'Brooke Timmons', 'Kylie Fraser', 'Stephanie Ralphs'
+      ],
+      persons = [];
+
+    _.times(10, function(n) {
+      persons.push(model.create({
+        name: names[n]
+      }));
+    });
+
+    return Promise
+      .all(persons)
+      .then(function() {
+        return new Promise(function(resolve) {
+          setTimeout(resolve, 100);
+        });
+      })
+      .then(function() {
+        return model.es.refresh();
+      });
+  });
+
+  // TODO: При массированном создании документов через create надо долго ждать, когда все создастья и зарефрешиться
+  it('search', function() {
+    return model.es.client
+      .search({
+        index: model.es.options.index,
+        type: model.es.options.type,
+        body: {
+          query: {
+            bool: {
+              must: [{query_string: {default_field: 'name', query: 'ra'}}]
+            }
           }
         }
-      }
-    }, function(err, res) {
-      should.ifError(err);
-
-      res.hits.total.should.be.equal(4);
-      res.hits.hits.should.have.length(4);
-
-      done();
-    });
+      })
+      .then(function(res) {
+        res.hits.total.should.be.equal(4);
+        res.hits.hits.should.have.length(4);
+      });
   });
-});
+})
+;

@@ -9,6 +9,7 @@ var mongoose = require('mongoose')
   , elastic = require('elasticsearch')
   , _ = require('lodash')
   , default_schema = require('./schema')
+  , assert = require('assert')
   , config
   , support;
 
@@ -65,10 +66,10 @@ module.exports = support = {
     return Math.random().toString().substr(3);
   },
 
-  removeCreatedIndexByModel: function(model, done) {
-    model.es.client.indices.delete({
+  removeCreatedIndexByModel: function(model) {
+    return model.es.client.indices.delete({
       index: model.collection.name,
       type: model.modelName
-    }, done);
+    });
   }
 };
