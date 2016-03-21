@@ -4,17 +4,20 @@
  * @author <a href="mailto:ma.chetverikov@gmail.com">Maksim Chetverikov</a>
  */
 
-var support = require('./support')
-  , plugin = require('./../lib')
-  , conn = support.mongoose_connect()
-  , _ = require('lodash')
-  , should = require('should');
+const support = require('./support');
+const plugin = require('./../lib');
+const mongoose = require('mongoose');
+const times = require('lodash.times');
+const should = require('should');
 
-describe('Mapping', function() {
+/* eslint max-nested-callbacks:0 */
+/* eslint require-jsdoc:0 */
+describe('Mapping', () => {
 
-  var model;
+  let model;
 
-  before(function() {
+  before(() => support.mongoose_connect());
+  before(() => {
     var schema = require('./support/schema');
 
     schema.plugin(plugin, {
@@ -73,47 +76,34 @@ describe('Mapping', function() {
       }
     });
 
-    model = conn.model(support.random() + '_ModelSync', schema);
+    model = mongoose.model(`${support.random()}_ModelSync`, schema);
 
     return model.es.createIndex();
   });
 
-  after(function() {
-    return support
-      .removeCreatedIndexByModel(model)
-      .then(function() {
-        conn.close();
-      });
-  });
+  after(() => support.removeAndClose(model));
 
-  it('created docs', function() {
-    this.timeout(500);
-    var names = [
-        'Jacob Andrews', 'Joshua Larkins', 'Tyler Livingston', 'Brandon Macduff', 'Robert Mackenzie',
-        'Morgan Gill', 'Rachel White', 'Brooke Timmons', 'Kylie Fraser', 'Stephanie Ralphs'
-      ],
-      persons = [];
+  it('created docs', () => {
+    const names = [
+      'Jacob Andrews', 'Joshua Larkins', 'Tyler Livingston', 'Brandon Macduff', 'Robert Mackenzie',
+      'Morgan Gill', 'Rachel White', 'Brooke Timmons', 'Kylie Fraser', 'Stephanie Ralphs'
+    ];
+    const persons = [];
 
-    _.times(10, function(n) {
-      persons.push(model.create({
-        name: names[n]
-      }));
-    });
+    times(10, n => persons.push(model.create({
+      name: names[n]
+    })));
 
     return Promise
       .all(persons)
-      .then(function() {
-        return new Promise(function(resolve) {
-          setTimeout(resolve, 100);
-        });
+      .then(() => {
+        return new Promise(resolve => setTimeout(resolve, 100));
       })
-      .then(function() {
-        return model.es.refresh();
-      });
+      .then(() => model.es.refresh());
   });
 
   // TODO: При массированном создании документов через create надо долго ждать, когда все создастья и зарефрешиться
-  it('search', function() {
+  it('search', () => {
     return model.es.client
       .search({
         index: model.es.options.index,
@@ -126,7 +116,7 @@ describe('Mapping', function() {
           }
         }
       })
-      .then(function(res) {
+      .then(res => {
         res.hits.total.should.be.equal(4);
         res.hits.hits.should.have.length(4);
       });

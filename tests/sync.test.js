@@ -4,70 +4,56 @@
  * @author <a href="mailto:ma.chetverikov@gmail.com">Maksim Chetverikov</a>
  */
 
-var support = require('./support')
-  , plugin = require('./../lib')
-  , conn = support.mongoose_connect()
-  , _ = require('lodash');
+const support = require('./support');
+const plugin = require('./../lib');
+const mongoose = require('mongoose');
+const times = require('lodash.times');
 
 require('should');
 
+/* eslint max-nested-callbacks:0 */
+/* eslint require-jsdoc:0 */
 describe('Sync', function() {
-  var model
-    , count = 3000;
+  let model;
+  const count = 3000;
 
   this.timeout(10000);
 
-  before(function() {
+  before(() => support.mongoose_connect());
+  before(() => {
     var schema = require('./support/schema');
 
     schema.plugin(plugin, {
       meddleware: false
     });
 
-    model = conn.model(support.random() + '_DocumentMethods', schema);
+    model = mongoose.model(`${support.random()}_DocumentMethods`, schema);
 
     return model.es.createIndex();
   });
 
-  before(function() {
+  before(() => {
     var docs = [];
 
-    _.times(count, function(n) {
-      docs.push(
-        model.create({name: 'Foo ' + n})
-      );
-    });
+    times(count, n => docs.push(model.create({name: `Foo ${n}`})));
 
     return Promise
       .all(docs)
-      .then(function() {
-        return model.count();
-      })
-      .then(function(count) {
-        if (!count || count !== count)
+      .then(() => model.count())
+      .then(count_of_doc => {
+        if (!count_of_doc || count_of_doc !== count){
           throw new Error('Docs not create');
+        }
       });
   });
 
-  after(function() {
-    return support
-      .removeCreatedIndexByModel(model)
-      .then(function() {
-        conn.close();
-      });
-  });
+  after(() => support.removeAndClose(model));
 
-  it('synchronization', function() {
+  it('synchronization', () => {
     return model.es
       .sync()
-      .then(function() {
-        return model.es.refresh();
-      })
-      .then(function() {
-        return model.es.count();
-      })
-      .then(function(res) {
-        res.count.should.be.equal(count);
-      });
+      .then(() => model.es.refresh())
+      .then(() => model.es.count())
+      .then(res => res.count.should.be.equal(count));
   });
 });

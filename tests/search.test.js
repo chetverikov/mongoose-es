@@ -6,14 +6,17 @@
 
 var support = require('./support')
   , plugin = require('./../lib')
-  , conn = support.mongoose_connect();
+  , mongoose = require('mongoose');
 
 require('should')
 
+/* eslint max-nested-callbacks:0 */
+/* eslint require-jsdoc:0 */
 describe.skip('Search', function() {
 
   var model;
 
+  before(() => support.mongoose_connect());
   before(function() {
     var schema = require('./support/schema');
 
@@ -26,13 +29,7 @@ describe.skip('Search', function() {
     return model.es.createIndex();
   });
 
-  after(function() {
-    return support
-      .removeCreatedIndexByModel(model)
-      .then(function() {
-        conn.close();
-      });
-  });
+  after(() => support.removeAndClose(model));
 
   describe('search', function() {
 

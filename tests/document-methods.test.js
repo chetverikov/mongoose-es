@@ -5,63 +5,59 @@
  * @author <a href="mailto:ma.chetverikov@gmail.com">Maksim Chetverikov</a>
  */
 
-var support = require('./support')
-  , plugin = require('./../lib')
-  , conn = support.mongoose_connect()
-  , should = require('should');
+const support = require('./support');
+const plugin = require('./../lib');
+const should = require('should');
+const mongoose = require('mongoose');
 
-describe('Document methods', function() {
+/* eslint max-nested-callbacks:0 */
+/* eslint require-jsdoc:0 */
+/* eslint no-underscore-dangle:0 */
+describe('Document methods', () => {
 
-  var model;
+  let model;
 
-  before(function() {
-    var schema = require('./support/schema');
+  before(() => support.mongoose_connect());
+  before(() => {
+    const schema = require('./support/schema');
 
     schema.plugin(plugin, {
       middleware: false
     });
 
-    model = conn.model(support.random() + '_DocumentMethods', schema);
+    model = mongoose.model(`${support.random()}_DocumentMethods`, schema);
 
     return model.es.createIndex();
   });
 
-  after(function() {
-    return support
-      .removeCreatedIndexByModel(model)
-      .then(function() {
-        conn.close();
-      });
-  });
+  after(() => support.removeAndClose(model));
 
-  it('document.index', function() {
+  it('document.index', () => {
     return model
       .create({
         name: 'Foo',
         phones: ['89000980909', '1234322344']
       })
-      .then(function(document) {
-        return Promise.all([document, document.index()]);
-      })
-      .then(function(data) {
-        var res = data[1]
-          , document = data[0];
+      .then(document => Promise.all([document, document.index()]))
+      .then(data => {
+        const res = data[1];
+        const document = data[0];
 
         should.ok(res.created);
         res._id.should.be.equal(document._id.toString());
       });
   });
 
-  it('document.unindex', function() {
+  it('document.unindex', () => {
     return model.create({
       name: 'Foo',
       phones: ['89000980909', '1234322344']
-    }).then(function(document) {
+    }).then(document => {
       var defer = Promise.defer();
 
-      document.on('es-index', function() {
-        model.es.refresh().then(function() {
-          document.on('es-unIndex', function(res) {
+      document.on('es-index', () => {
+        model.es.refresh().then(() => {
+          document.on('es-unIndex', res => {
             should.ok(res.found);
 
             res._index.should.be.equal(model.collection.name);
@@ -70,10 +66,10 @@ describe('Document methods', function() {
             defer.resolve();
           });
           document.unIndex();
-        }, function(err) {
-          defer.reject(err);
-        });
+        })
+        .catch(err => defer.reject(err));
       });
+      
       document.index();
 
       return defer.promise;

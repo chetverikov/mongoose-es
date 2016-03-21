@@ -1,67 +1,55 @@
 'use strict';
 
-/**
- * @author <a href="mailto:ma.chetverikov@gmail.com">Maksim Chetverikov</a>
- */
-
-var support = require('./support')
-  , plugin = require('./../lib')
-  , conn = support.mongoose_connect()
-  , _ = require('lodash');
+const support = require('./support');
+const plugin = require('./../lib');
+const mongoose = require('mongoose');
+const times = require('lodash.times');
 
 require('should');
 
-describe('Model methods', function() {
+/* eslint max-nested-callbacks:0 */
+/* eslint require-jsdoc:0 */
+describe('Model methods', () => {
 
-  var model;
+  let model;
 
-  before(function() {
+  before(() => support.mongoose_connect());
+  before(() => {
     var schema = require('./support/schema');
 
     schema.plugin(plugin);
 
-    model = conn.model(support.random() + '_DocumentMethods', schema);
+    model = mongoose.model(`${support.random()}_DocumentMethods`, schema);
 
     return model.es.createIndex();
   });
 
-  after(function() {
-    return support
-      .removeCreatedIndexByModel(model)
-      .then(function() {
-        conn.close();
-      });
-  });
+  after(() => support.removeAndClose(model));
 
-  describe('model.refresh', function() {
-    before(function() {
+  describe('model.refresh', () => {
+    before(() => {
       var docs = [];
-      _.times(30, function(n) {
+      times(30, n => {
         docs.push(
           model
-            .create({name: 'Foo ' + n})
-            .then(function(doc) {
+            .create({name: `Foo ${n}`})
+            .then(doc => {
               var def = Promise.defer();
 
-              doc.on('es-index', def.resolve.bind(def));
+              doc.on('es-index', () => def.resolve());
 
               return def.promise;
             })
         );
       });
 
-      return Promise
-        .all(docs);
+      return Promise.all(docs);
     });
 
-    it('refresh exec', function() {
-      return model.es.refresh();
-    });
+    it('refresh exec', () => model.es.refresh());
 
-    it('check count indexed documents', function() {
-      return model.es.count().then(function(res) {
-        res.count.should.be.equal(30);
-      });
+    it('check count indexed documents', () => {
+      return model.es.count().then(res => res.count.should.be.equal(30));
     });
   });
 });

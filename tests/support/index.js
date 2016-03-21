@@ -5,15 +5,10 @@
  * @author <a href="mailto:ma.chetverikov@gmail.com">Maksim Chetverikov</a>
  */
 
-var mongoose = require('mongoose')
-  , elastic = require('elasticsearch')
-  , _ = require('lodash')
-  , default_schema = require('./schema')
-  , assert = require('assert')
-  , config
-  , support;
+const mongoose = require('mongoose');
+const assert = require('assert');
 
-config = {
+const config = {
   mongoose: {
     uri: 'localhost:27017',
     options: {}
@@ -24,13 +19,11 @@ config = {
   }
 };
 
-module.exports = support = {
-  mongoose_connect: function(options) {
+module.exports = {
+  mongoose_connect: options => {
     options = options || {};
 
-    var uri
-      , noErrorListener = !!options.noErrorListener
-      , conn;
+    let uri;
 
     if (options.uri) {
       uri = options.uri;
@@ -39,37 +32,22 @@ module.exports = support = {
       uri = config.mongoose.uri;
     }
 
-    delete options.noErrorListener;
+    if (mongoose.connection && mongoose.readyState !== 0) {
+      return mongoose.connection.close().then(() => mongoose.connect(uri, options));
+    }
 
-    conn = mongoose.createConnection(uri, options);
-
-    if (noErrorListener) return conn;
-
-    conn.on('error', function(err) {
-      assert.ok(err);
-    });
-
-    return conn;
+    return mongoose.connect(uri, options);
   },
 
-  elastic_connect: function() {
+  random: () => Math.random().toString().substr(3),
 
-  },
+  removeAndClose: model =>
+    module.exports
+      .removeCreatedIndexByModel(model)
+      .then(() => mongoose.connection.close()),
 
-  getModelForTest: function() {
-    var name = 'TestME_' + support.random();
-
-    return mongoose.model(name, default_schema, name);
-  },
-
-  random: function() {
-    return Math.random().toString().substr(3);
-  },
-
-  removeCreatedIndexByModel: function(model) {
-    return model.es.client.indices.delete({
-      index: model.collection.name,
-      type: model.modelName
-    });
-  }
+  removeCreatedIndexByModel: model => model.es.client.indices.delete({
+    index: model.collection.name,
+    type: model.modelName
+  })
 };
