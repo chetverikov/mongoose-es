@@ -17,14 +17,22 @@ describe('Sync', function() {
   let model;
   const count = 3000;
 
-  this.timeout(10000);
+  this.timeout(100000);
 
   before(() => support.mongoose_connect());
   before(() => {
     var schema = require('./support/schema');
 
     schema.plugin(plugin, {
-      meddleware: false
+      elastic: support.config.elastic,
+      middleware: false,
+      transform: doc => {
+        const def = Promise.defer();
+
+        setTimeout(() => def.resolve(doc), 50);
+
+        return def.promise;
+      }
     });
 
     model = mongoose.model(`${support.random()}_DocumentMethods`, schema);
@@ -52,6 +60,11 @@ describe('Sync', function() {
   it('synchronization', () => {
     return model.es
       .sync()
+      .then(() => {
+        const def = Promise.defer();
+        setTimeout(() => def.resolve(), 5000);
+        return def.promise;
+      })
       .then(() => model.es.refresh())
       .then(() => model.es.count())
       .then(res => res.count.should.be.equal(count));

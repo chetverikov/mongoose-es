@@ -15,11 +15,16 @@ const config = {
   },
   elastic: {
     host: 'localhost:9200',
-    log: 'trace'
+/*    log: {
+      type: 'file',
+      level: ['trace', 'debug', 'info'],
+      path: 'elasticsearch.log'
+    }*/
   }
 };
 
 module.exports = {
+  config: config,
   mongoose_connect: options => {
     options = options || {};
 
@@ -47,7 +52,6 @@ module.exports = {
       .then(() => mongoose.connection.close()),
 
   removeCreatedIndexByModel: model => model.es.client.indices.delete({
-    index: model.collection.name,
-    type: model.modelName
+    index: model.collection.name
   })
 };
