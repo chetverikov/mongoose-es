@@ -1,6 +1,6 @@
 {
   "name": "mongoose-es",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A small plugin for mongoose.js allows you to automatically index the data in the elastic (ElasticSearch)",
   "main": "lib/index.js",
   "scripts": {
