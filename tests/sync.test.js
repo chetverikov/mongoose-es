@@ -29,6 +29,9 @@ describe('Sync', function() {
       transform: doc => {
         const def = Promise.defer();
 
+        doc = doc.toObject();
+        delete doc._id;
+
         setTimeout(() => def.resolve(doc), 50);
 
         return def.promise;
