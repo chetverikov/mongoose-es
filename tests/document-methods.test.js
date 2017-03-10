@@ -9,70 +9,71 @@ const support = require('./support');
 const plugin = require('./../lib');
 const should = require('should');
 const mongoose = require('mongoose');
+const it = require('ava');
 
 /* eslint max-nested-callbacks:0 */
 /* eslint require-jsdoc:0 */
 /* eslint no-underscore-dangle:0 */
-describe('Document methods', () => {
 
-  let model;
 
-  before(() => support.mongoose_connect());
-  before(() => {
-    const schema = require('./support/schema');
+let model;
 
-    schema.plugin(plugin, {
-      middleware: false
-    });
+it.before(() => support.mongoose_connect());
+it.before(() => {
+  const schema = require('./support/schema');
 
-    model = mongoose.model(`${support.random()}_DocumentMethods`, schema);
-
-    return model.es.createIndex();
+  schema.plugin(plugin, {
+    middleware: false
   });
 
-  after(() => support.removeAndClose(model));
+  model = mongoose.model(`${support.random()}_DocumentMethods`, schema);
 
-  it('document.index', () => {
-    return model
-      .create({
-        name: 'Foo',
-        phones: ['89000980909', '1234322344']
-      })
-      .then(document => Promise.all([document, document.index()]))
-      .then(data => {
-        const res = data[1];
-        const document = data[0];
+  return model.es.createIndex();
+});
 
-        should.ok(res.created);
-        res._id.should.be.equal(document._id.toString());
-      });
-  });
+it.after.always(() => support.removeAndClose(model));
 
-  it('document.unindex', () => {
-    return model.create({
+it('document.index', () => {
+  return model
+    .create({
       name: 'Foo',
       phones: ['89000980909', '1234322344']
-    }).then(document => {
-      var defer = Promise.defer();
+    })
+    .then(document => Promise.all([document, document.index()]))
+    .then(data => {
+      const res = data[1];
+      const document = data[0];
 
-      document.on('es-index', () => {
-        model.es.refresh().then(() => {
-          document.on('es-unIndex', res => {
-            should.ok(res.found);
-
-            res._index.should.be.equal(model.collection.name);
-            res._type.should.be.equal(model.modelName);
-
-            defer.resolve();
-          });
-          document.unIndex();
-        })
-        .catch(err => defer.reject(err));
-      });
-      
-      document.index();
-
-      return defer.promise;
+      should.ok(res.created);
+      res._id.should.be.equal(document._id.toString());
     });
+});
+
+it('document.unindex', () => {
+  return model.create({
+    name: 'Foo',
+    phones: ['89000980909', '1234322344']
+  }).then(document => {
+    const promise = new Promise((resolve, reject) => {
+      document.on('es-index', () => {
+        model.es.refresh()
+          .then(() => {
+            document.on('es-unIndex', res => {
+              should.ok(res.found); // TODO отловится?
+
+              res._index.should.be.equal(model.collection.name);
+              res._type.should.be.equal(model.modelName);
+
+              resolve();
+            });
+            document.unIndex();
+          })
+          .catch(reject);
+      });
+    });
+
+    document.index();
+
+    return promise;
   });
 });

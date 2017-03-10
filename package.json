@@ -1,10 +1,10 @@
 {
   "name": "mongoose-es",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "A small plugin for mongoose.js allows you to automatically index the data in the elastic (ElasticSearch)",
   "main": "lib/index.js",
   "scripts": {
-    "test": "mocha --timeout=5000 --async-only tests/**/*.test.js"
+    "test": "node_modules/.bin/ava --timeout=100000 tests/**/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -26,23 +26,20 @@
   },
   "homepage": "https://github.com/chetverikov/mongoose-es",
   "engines": {
-    "node": ">=4"
-  },
-  "dependencies": {
-    "elasticsearch": "^10.1.3",
-    "lodash.clonedeep": "^4.3.1",
-    "lodash.defaults": "^4.0.1",
-    "lodash.has": "^4.2.1",
-    "lodash.isboolean": "^3.0.3",
-    "lodash.pairs": "^3.0.1",
-    "lodash.times": "^4.0.2"
+    "node": ">=6"
   },
   "peerDependencies": {
-    "mongoose": "^4.3.x"
+    "mongoose": "^4.5.x"
   },
   "devDependencies": {
-    "mocha": "^2.3.x",
-    "mongoose": "^4.3.x",
+    "ava": "^0.18.2",
+    "mongoose": "^4.5.x",
     "should": "^8.0.1"
+  },
+  "dependencies": {
+    "elasticsearch": "^12.1.3",
+    "lodash.clonedeep": "^4.5.0",
+    "lodash.defaults": "^4.2.0",
+    "lodash.pairs": "^3.0.1"
   }
 }

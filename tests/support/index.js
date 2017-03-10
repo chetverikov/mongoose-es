@@ -6,7 +6,6 @@
  */
 
 const mongoose = require('mongoose');
-const assert = require('assert');
 
 const config = {
   mongoose: {
@@ -37,7 +36,7 @@ module.exports = {
       uri = config.mongoose.uri;
     }
 
-    if (mongoose.connection && mongoose.readyState !== 0) {
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
       return mongoose.connection.close().then(() => mongoose.connect(uri, options));
     }
 

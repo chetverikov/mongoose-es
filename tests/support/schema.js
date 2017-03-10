@@ -5,7 +5,7 @@
  * @author <a href="mailto:ma.chetverikov@gmail.com">Maksim Chetverikov</a>
  */
 
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 delete require.cache[__filename]; // For new schema object on each require
 
